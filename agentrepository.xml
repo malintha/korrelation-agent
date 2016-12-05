@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<repository fileName="agentrepository.xml">
+    <items>
+        <agentRepItems>
+            <agentRepItem description="" classPath="" agentName="Warning: Repository not loaded"/>
+            <agentRepItem description="" classPath="" agentName="Please check that Genius can find agentrepository.xml and domainrepository.xml"/>
+            <agentRepItem description="" classPath="" agentName="And make sure /etc/templates is in the same directory"/>
+            <agentRepItem description="simple agent" classPath="agents.BayesianAgent" agentName="BayesianAgent"/>
+            <agentRepItem description="basic UI agent" classPath="agents.UIAgent" agentName="UI agent"/>
+            <agentRepItem description="CorrelationAgent.class(compatible with non-linear utility spaces) (1.2)" classPath="C:\Users\Malintha\Desktop\GENIUS\source\KorrelationAgent\out\production\KorrelationAgent\m8\agents\CorrelationAgent.class" agentName="CorrelationAgent.class(compatible with non-linear utility spaces)"/>
+            <agentRepItem description="GA.class(compatible with non-linear utility spaces) (1.2)" classPath="C:\Users\Malintha\Desktop\GENIUS\source\KorrelationAgent\out\production\KorrelationAgent\m8\agents\GAAgent.class" agentName="BloodyGA"/>
+
+        </agentRepItems>
+        <partyRepItems/>
+        <domainRepItem/>
+        <protocolRepItem/>
+        <multiPartyProtocolRepItem/>
+    </items>
+    <filename>agentrepository.xml</filename>
+</repository>

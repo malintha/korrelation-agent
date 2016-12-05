@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<repository fileName="partyrepository.xml">
+    <items>
+        <agentRepItems/>
+        <partyRepItems>
+            <partyRepItem protocolClassPath="negotiator.protocol.StackedAlternatingOffersProtocol" description="CounterOfferHumanNegotiationParty" classPath="negotiator.parties.CounterOfferHumanNegotiationParty" partyName="CounterOfferHumanNegotiationParty">
+                <properties/>
+            </partyRepItem>
+        </partyRepItems>
+        <domainRepItem/>
+        <protocolRepItem/>
+        <multiPartyProtocolRepItem/>
+    </items>
+    <filename>partyrepository.xml</filename>
+</repository>
