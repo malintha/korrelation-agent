@@ -2,15 +2,21 @@ package m8.agents;
 
 import agents.similarity.Similarity;
 import negotiator.*;
-import negotiator.actions.*;
+import negotiator.actions.Accept;
+import negotiator.actions.Action;
+import negotiator.actions.EndNegotiation;
+import negotiator.actions.Offer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 import java.util.logging.Logger;
 
 public class CorrelationAgent extends Agent {
 
     public Action actionOfPartner = null;
-    public static Logger log = Logger.getLogger(CorrelationAgent.class.getName());
+    public static Logger log = Logger.getLogger(agents.m8.CorrelationAgent.class.getName());
     public Action myLastAction;
     public Bid myLastBid;
     public AgentID agentID;

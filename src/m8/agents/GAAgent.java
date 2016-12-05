@@ -1,34 +1,37 @@
 package m8.agents;
 
-import negotiator.Agent;
+import agents.m8.CorrelationAgent;
 import negotiator.Bid;
-import negotiator.Domain;
+import negotiator.actions.Action;
+import negotiator.actions.Offer;
 import negotiator.boaframework.offeringstrategy.anac2010.IAMhaggler2010.TimeConcessionFunction;
 import negotiator.issue.Issue;
-import negotiator.tournament.Tournament;
-import negotiator.utility.AdditiveUtilitySpace;
-import negotiator.utility.Evaluator;
-import org.apache.commons.math.genetics.*;
+import negotiator.issue.Objective;
+import negotiator.issue.ValueDiscrete;
+import negotiator.utility.*;
+import org.apache.commons.math3.genetics.*;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 /**
  * Created by Malintha on 12/4/2016.
  */
 public class GAAgent extends CorrelationAgent {
 
-    private static int populationSize = 100;
+    private static int populationSize = 1000;
     private double targetUtility;
-    private ArrayList<ChromosomicBid> proposalList;
+    private double currentUtility;
+    private ArrayList<Bid> proposalList;
 
+    @Override
+    public Action generateCounterOffer(Offer opponentOffer) {
+        return new Offer(getAgentID(), getNextBid());
+    }
 
-    private ArrayList<ChromosomicBid> createPopulation() {
-        ArrayList<ChromosomicBid> newPopulation = new ArrayList<>();
+    private ArrayList<Bid> createPopulation() {
+        ArrayList<Bid> newPopulation = new ArrayList<>();
         for (int i = 0; i < populationSize; i++) {
-            newPopulation.add((ChromosomicBid) utilitySpace.getDomain().getRandomBid(new Random()));
+            newPopulation.add(utilitySpace.getDomain().getRandomBid(new Random()));
         }
         return newPopulation;
     }
@@ -40,16 +43,67 @@ public class GAAgent extends CorrelationAgent {
         this.targetUtility = tcf.getConcession(startUtility, Math.round(currentTime), totalTime);
     }
 
-    private double getUtilityByIssue(ChromosomicBid bid, Issue issue) {
-        AdditiveUtilitySpace additiveUtilitySpace = new AdditiveUtilitySpace(utilitySpace.getDomain());
+    private double getUtilityByIssue(Bid bid, Issue issue) {
+        AdditiveUtilitySpace additiveUtilitySpace = (AdditiveUtilitySpace) utilitySpace;
+        Iterator<Map.Entry<Objective, Evaluator>> issueE = additiveUtilitySpace.getEvaluators().iterator();
+        Set<Map.Entry<Objective, Evaluator>> evaluatorSet = additiveUtilitySpace.getEvaluators();
+        Evaluator eval = additiveUtilitySpace.getEvaluator(1);
+        double weight1 = eval.getWeight();
+        if (eval.getType() == EVALUATORTYPE.DISCRETE) {
+
+        }
+
+        while (issueE.hasNext()) { // every issue
+            Map.Entry<Objective, Evaluator> entry = issueE.next();
+            Evaluator e = entry.getValue();
+            double weight = e.getWeight();
+            if (e.getType() == EVALUATORTYPE.DISCRETE) {
+                Iterator<ValueDiscrete> v = ((EvaluatorDiscrete) e).getValues()
+                        .iterator();
+                List<Double> s = new ArrayList<Double>();
+                double sumU = 0;
+                while (v.hasNext()) {
+                    ValueDiscrete vd = v.next();
+                    try {
+                        double val = ((EvaluatorDiscrete) e).getEvaluation(vd);
+                        s.add(val);
+                        sumU += val;
+
+                    } catch (Exception e1) {
+                        // System.out.println("META-Agent IO exception: " +
+                        // e1.toString());
+                    }
+                }
+                int currSize = s.size();
+
+            } else if (e.getType() == EVALUATORTYPE.INTEGER) {
+                double tempEU = ((double) (((EvaluatorInteger) e).getUpperBound() + ((EvaluatorInteger) e)
+                        .getLowerBound())) / 2;
+                double tempStdevU = Math
+                        .sqrt((Math.pow(((EvaluatorInteger) e).getUpperBound()
+                                - tempEU, 2) + Math.pow(
+                                ((EvaluatorInteger) e).getLowerBound() - tempEU,
+                                2)) / 2);
+            } else if (e.getType() == EVALUATORTYPE.REAL) {
+                double tempEU = (((EvaluatorReal) e).getUpperBound() + ((EvaluatorReal) e)
+                        .getLowerBound()) / 2;
+                double tempStdevU = Math
+                        .sqrt((Math.pow(((EvaluatorReal) e).getUpperBound()
+                                - tempEU, 2) + Math.pow(
+                                ((EvaluatorReal) e).getLowerBound() - tempEU, 2)) / 2);
+            } else {
+                double tempEU = 0.5;
+                double tempStdevU = 0;
+            }
+        }
+
         double weight = additiveUtilitySpace.getWeight(issue.getNumber());
-        Evaluator evaluator = additiveUtilitySpace.getEvaluator(issue.getNumber());
-        double score = evaluator.getEvaluation(additiveUtilitySpace, bid, issue.getNumber());
-        double issueUtility = score*weight;
+
+        double issueUtility = 1 * weight;
         return issueUtility;
     }
 
-    private boolean calculateIsEquallyDistributed(ChromosomicBid bid) {
+    private boolean calculateIsEquallyDistributed(Bid bid) {
         List<Issue> issueList = bid.getIssues();
         double bidUtility = utilitySpace.getUtility(bid);
         double threshold = 0.4;
@@ -64,32 +118,27 @@ public class GAAgent extends CorrelationAgent {
     }
 
     private ChromosomicBid getNextBid() {
-        if(proposalList.size() != 0) {
-            ChromosomicBid b = (ChromosomicBid) proposalList.get(0);
-            proposalList.remove(0);
-            return b;
+        if (proposalList != null) {
+            if (proposalList.size() != 0) {
+                ChromosomicBid b = (ChromosomicBid) proposalList.get(0);
+                proposalList.remove(0);
+                return b;
+            }
         }
 
-        //goto next target utility
-        //create population
-        //select parents
-        //perform genetic operations
-        //get resulting children
-        //if intargetUtility and similarity then put to proposallist
-        //get next bid
-
-        double currentUtility = targetUtility;
+        double currentUtility = utilitySpace.getUtility(this.myLastBid);
         setTargetUtility(currentUtility);
-        ArrayList<ChromosomicBid> parentList = selectParents(createPopulation());
-
+        ArrayList<Bid> population = createPopulation();
+        ArrayList<Chromosome> parentList = selectParents(population);
+        performGeneticOperations(parentList);
 
         return null;
     }
 
-    private ArrayList<ChromosomicBid> selectParents(ArrayList<ChromosomicBid> population) {
-        ArrayList<ChromosomicBid> parentList = new ArrayList<>();
+    private ArrayList<Chromosome> selectParents(ArrayList<Bid> population) {
+        ArrayList<Chromosome> parentList = new ArrayList<>();
         proposalList = new ArrayList<>();
-        for (ChromosomicBid b : population) {
+        for (Bid b : population) {
             if (calculateIsEquallyDistributed(b)) {
                 parentList.add(b);
             }
@@ -104,49 +153,23 @@ public class GAAgent extends CorrelationAgent {
 
     private boolean isInTargetUtility(Bid bid) {
         double bidUtility = utilitySpace.getUtility(bid);
-        if (Math.abs(bidUtility-targetUtility) < 0.001) {
+        if (Math.abs(bidUtility - targetUtility) < 0.01) {
             return true;
         }
         return false;
     }
 
-    private ArrayList<Bid> performGeneticOperations(ArrayList<ChromosomicBid> parentList) {
-        GeneticAlgorithm ga = new GeneticAlgorithm(new OnePointCrossover<>(), 1, new RandomKeyMutation(), 0.1, new TournamentSelection(1));
+    private void performGeneticOperations(ArrayList<Chromosome> parentList) {
+        org.apache.commons.math3.genetics.GeneticAlgorithm ga = new org.apache.commons.math3.genetics.GeneticAlgorithm(new BidUniformCrossOver(0.1, utilitySpace.getDomain()), 1, new org.apache.commons.math3.genetics.RandomKeyMutation(), 0.1, new org.apache.commons.math3.genetics.TournamentSelection(3));
+//        GeneticAlgorithm ga = new GeneticAlgorithm(new CycleCrossover(), 1, new RandomKeyMutation(), 0.1, new TournamentSelection(1));
 
-        ArrayList<Chromosome> bidChromosomes = new ArrayList<>();
-        for(ChromosomicBid cb : parentList) {
-            bidChromosomes.add(cb);
-        }
-
-        Population initialPopulation = new ElitisticListPopulation(bidChromosomes, 100, 0.2);
+        Population initialPopulation = new ElitisticListPopulation(parentList, 1000, 0.2);
         StoppingCondition stopCond = new FixedGenerationCount(3);
         Population finalPopulation = ga.evolve(initialPopulation, stopCond);
         for(Chromosome cb : finalPopulation) {
-
+            proposalList.add((ChromosomicBid) cb);
         }
 
-
-        return null;
-    }
-
-}
-
-
-class ChromosomicBid extends Bid {
-
-    double utility;
-    double similarity;
-    Agent agent;
-
-    public ChromosomicBid(Domain domain) {
-        super(domain);
-        agent = new GAAgent();
-    }
-
-    @Override
-    public double fitness() {
-        utility = agent.utilitySpace.getUtility(this);
-        return utility;
     }
 
 }
