@@ -40,7 +40,8 @@ public class BidRelativeMutation implements MutationPolicy {
             int rInd = GeneticAlgorithm.getRandomGenerator().nextInt(repr.size());
             ArrayList newRepr = new ArrayList(repr);
             newRepr.set(rInd, Double.valueOf(GeneticAlgorithm.getRandomGenerator().nextDouble()));
-            return originalRk.newFixedLengthChromosome(newRepr);
+//            return originalRk.newFixedLengthChromosome(newRepr);
+            return null;
         }
     }
 
