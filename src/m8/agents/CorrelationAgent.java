@@ -240,81 +240,48 @@ public class CorrelationAgent extends Agent {
         }
     }
 
-///*
-//    public double[] getPartialCorrelations(int in, int nvars) {
-//
-//        final double[] output = new double[(nvars - in + 1) * (nvars - in) / 2];
-//        double[] d = new double[nvars];
-//        double[] rhs = new double[nvars];
-//        double[] r = new double[nvars * (nvars - 1) / 2];
-//        double sserr = 0.0;
-//        int pos;
-//        int pos1;
-//        int pos2;
-//        final int rms_off = -in;
-//        final int wrk_off = -(in + 1);
-//        final double[] rms = new double[nvars - in];
-//        final double[] work = new double[nvars - in - 1];
-//        double sumxx;
-//        double sumxy;
-//        double sumyy;
-//        final int offXX = (nvars - in) * (nvars - in - 1) / 2;
-//        if (in < -1 || in >= nvars) {
-//            return null;
-//        }
-//        final int nvm = nvars - 1;
-//        final int base_pos = r.length - (nvm - in) * (nvm - in + 1) / 2;
-//        if (d[in] > 0.0) {
-//            rms[in + rms_off] = 1.0 / Math.sqrt(d[in]);
-//        }
-//        for (int col = in + 1; col < nvars; col++) {
-//            pos = base_pos + col - 1 - in;
-//            sumxx = d[col];
-//            for (int row = in; row < col; row++) {
-//                sumxx += d[row] * r[pos] * r[pos];
-//                pos += nvars - row - 2;
-//            }
-//            if (sumxx > 0.0) {
-//                rms[col + rms_off] = 1.0 / Math.sqrt(sumxx);
-//            } else {
-//                rms[col + rms_off] = 0.0;
-//            }
-//        }
-//        sumyy = sserr;
-//        for (int row = in; row < nvars; row++) {
-//            sumyy += d[row] * rhs[row] * rhs[row];
-//        }
-//        if (sumyy > 0.0) {
-//            sumyy = 1.0 / Math.sqrt(sumyy);
-//        }
-//        pos = 0;
-//        for (int col1 = in; col1 < nvars; col1++) {
-//            sumxy = 0.0;
-//            Arrays.fill(work, 0.0);
-//            pos1 = base_pos + col1 - in - 1;
-//            for (int row = in; row < col1; row++) {
-//                pos2 = pos1 + 1;
-//                for (int col2 = col1 + 1; col2 < nvars; col2++) {
-//                    work[col2 + wrk_off] += d[row] * r[pos1] * r[pos2];
-//                    pos2++;
-//                }
-//                sumxy += d[row] * r[pos1] * rhs[row];
-//                pos1 += nvars - row - 2;
-//            }
-//            pos2 = pos1 + 1;
-//            for (int col2 = col1 + 1; col2 < nvars; col2++) {
-//                work[col2 + wrk_off] += d[col1] * r[pos2];
-//                ++pos2;
-//                output[ (col2 - 1 - in) * (col2 - in) / 2 + col1 - in] =
-//                        work[col2 + wrk_off] * rms[col1 + rms_off] * rms[col2 + rms_off];
-//                ++pos;
-//            }
-//            sumxy += d[col1] * rhs[col1];
-//            output[col1 + rms_off + offXX] = sumxy * rms[col1 + rms_off] * sumyy;
-//        }
-//
-//        return output;
-//    }*/
+    public double getPartialCorrelationControlledZ(double rxy, double rxz, double ryz) {
+        double rxy_z = 0;
+        rxy_z = (rxy - rxz * ryz) / (Math.sqrt(1 - rxz * rxz) * Math.sqrt(1 - ryz * ryz));
+        return rxy_z;
+    }
+
+    public double getCorrelationXZ(double[] x, double[] y) {
+        double sumx = 0.0, sumy = 0.0;
+        int n = x.length;
+        for (int i = 0; i < x.length; i++) {
+            sumx += x[i];
+            sumy += y[i];
+        }
+
+        double xbar = sumx / n;
+        double ybar = sumy / n;
+
+        double[] xi_xbar = new double[n];
+        double[] yi_ybar = new double[n];
+        double[] xi_xbar_yi_ybar = new double[n];
+        double[] xi_xbar_sq = new double[n];
+        double[] yi_ybar_sq = new double[n];
+
+        for (int i = 0; i < n; i++) {
+            xi_xbar[i] = x[i] - xbar;
+            yi_ybar[i] = y[i] - ybar;
+            xi_xbar_yi_ybar[i] = xi_xbar[i] * yi_ybar[i];
+            xi_xbar_sq[i] = xi_xbar[i] * xi_xbar[i];
+            yi_ybar_sq[i] = yi_ybar[i] * yi_ybar[i];
+        }
+
+        double sig_xi_xbar_sq = 0, sig_yi_ybar_sq = 0, sig_xi_xbar_yi_ybar = 0;
+
+        for (int i = 0; i < n; i++) {
+            sig_xi_xbar_sq += xi_xbar_sq[i];
+            sig_yi_ybar_sq += yi_ybar_sq[i];
+            sig_xi_xbar_yi_ybar += xi_xbar_yi_ybar[i];
+        }
+
+        double rxy = sig_xi_xbar_yi_ybar / (Math.sqrt(sig_xi_xbar_sq * sig_yi_ybar_sq));
+        return rxy;
+    }
 
 
 
