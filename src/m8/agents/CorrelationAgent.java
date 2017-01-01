@@ -6,11 +6,16 @@ import negotiator.actions.Accept;
 import negotiator.actions.Action;
 import negotiator.actions.EndNegotiation;
 import negotiator.actions.Offer;
+import negotiator.issue.Issue;
+import negotiator.issue.IssueDiscrete;
+import negotiator.issue.Value;
+import negotiator.issue.ValueDiscrete;
+import negotiator.utility.AdditiveUtilitySpace;
+import negotiator.utility.Evaluator;
+import negotiator.utility.EvaluatorDiscrete;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Logger;
 
 public class CorrelationAgent extends Agent {
@@ -32,6 +37,9 @@ public class CorrelationAgent extends Agent {
     public static final double ALLOWED_UTILITY_DEVIATION = 0.01;
     public static final double CONCESSION_FACTOR = 0.035;
     public HashMap<Bid, Double> utilityCash;
+
+    List<ArrayBlockingQueue<Double>> bidsList;
+
     public ActionType getActionType(Action lAction) {
         ActionType lActionType = ActionType.START;
         if (lAction instanceof Offer)
@@ -55,6 +63,10 @@ public class CorrelationAgent extends Agent {
         this.nOfIssues = utilitySpace.getDomain().getIssues().size();
         this.agentID = this.getAgentID();
         this.fSimilarity = new Similarity(utilitySpace.getDomain());
+        this.bidsList = new ArrayList<>(utilitySpace.getDomain().getIssues().size());
+        for(int i =0;i < this.nOfIssues; i++) {
+            bidsList.add(new ArrayBlockingQueue<Double>(15));
+        }
 
         this.utilityCash = new HashMap<>();
         BidIterator lIter = new BidIterator(utilitySpace.getDomain());
@@ -125,6 +137,8 @@ public class CorrelationAgent extends Agent {
         return lMyAction;
     }
 
+    static AdditiveUtilitySpace additiveUtilitySpace;
+
     public Action generateInitialOffer(Offer opponentOffer) throws Exception {
         Bid myInitialBid = null;
 
@@ -139,23 +153,56 @@ public class CorrelationAgent extends Agent {
         return new Offer(getAgentID(), myInitialBid);
     }
 
-    public Action generateCounterOffer(Offer opponentOffer) {
+    public Action generateCounterOffer(Offer opponentOffer) throws InterruptedException {
         Bid pOpponentBid = opponentOffer.getBid();
+
+        for(int i =0; i<this.nOfIssues ; i++) {
+            ArrayBlockingQueue<Double> issueValues = bidsList.get(i);
+            if(issueValues.remainingCapacity() == 0) {
+                issueValues.take();
+            }
+            additiveUtilitySpace = (AdditiveUtilitySpace) utilitySpace;
+            double evaluation = additiveUtilitySpace.getEvaluator(i+1).getEvaluation(additiveUtilitySpace, pOpponentBid, i+1);
+            issueValues.offer(evaluation);
+        }
+
         Bid myBid;
-        log.info("round = "+round+" issues = "+nOfIssues);
         if(useCorrelation()) {
-            log.info("Using correlation strategy");
+            getNextBidCorrelated(pOpponentBid);
             myBid = getNextBidSmart(pOpponentBid);
+
         }
         else {
-            log.info("Using similarity strategy");
             myBid = getNextBidSmart(pOpponentBid);
         }
         return new Offer(getAgentID(), myBid);
     }
 
     public Bid getNextBidCorrelated(Bid pOppntBid) {
+        double Ei = 0;
+        Bid myNextBid = myLastBid;
+        HashMap<Integer, Value> myValues = myLastBid.getValues();
+        HashMap<Integer, Value> newValues = new HashMap<Integer, Value>();
+        double utilityExcess = 0;
+        Evaluator evaluator;
+        for(int i =1 ; i <= nOfIssues; i++) {
+            double Yi = ((EvaluatorDiscrete)additiveUtilitySpace.getEvaluator(i)).getValue((ValueDiscrete) pOppntBid.getValue(i));
+            double Xi = ((EvaluatorDiscrete)additiveUtilitySpace.getEvaluator(i)).getValue((ValueDiscrete) myLastBid.getValue(i));
+            evaluator = additiveUtilitySpace.getEvaluator(i);
+            IssueDiscrete thisIssueDiscrete = (IssueDiscrete) myLastBid.getIssues().get(i-1);
+            Ei = Yi - Xi;
+            if(Ei > 0) {
+
+                utilityExcess += evaluator.getWeight()*(Xi - Yi);
+                newValues.put(thisIssueDiscrete.getNumber(), pOppntBid.getValue(thisIssueDiscrete.getNumber()));
+            }
+        }
+
         return null;
+    }
+
+    public Value getDiscreteFloorX(double aspirationalValue) {
+    return null;
     }
 
     public Bid getNextBidSmart(Bid pOppntBid) {
@@ -201,7 +248,7 @@ public class CorrelationAgent extends Agent {
     }
 
     public boolean useCorrelation() {
-        return round > nOfIssues * 2;
+        return round > 5;
     }
 
     public double getTargetUtility(double myUtility) {
@@ -282,9 +329,6 @@ public class CorrelationAgent extends Agent {
         double rxy = sig_xi_xbar_yi_ybar / (Math.sqrt(sig_xi_xbar_sq * sig_yi_ybar_sq));
         return rxy;
     }
-
-
-
 
 }
 
