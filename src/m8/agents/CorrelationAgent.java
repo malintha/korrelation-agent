@@ -177,6 +177,7 @@ public class CorrelationAgent extends Agent {
             Issue issue = utilitySpace.getDomain().getIssues().get(i);
             double key;
             if (issue.getType() == ISSUETYPE.DISCRETE) {
+                //use ascii value
                 key = valuesMap.get(issue.getNumber()).get(opponentOffer.getBid().getValue(issue.getNumber()));
             } else {
                 key = Double.valueOf(opponentOffer.getBid().getValue(issue.getNumber()).toString());
@@ -207,36 +208,60 @@ public class CorrelationAgent extends Agent {
         HashMap<Integer, Value> myValues = myLastBid.getValues();
         HashMap<Integer, Value> newValues = new HashMap<Integer, Value>();
         double utilityExcess = 0;
-        Evaluator evaluator;
+        Evaluator evaluator_i, evaluator_j;
         for (int i = 0; i < nOfIssues; i++) {
             Issue issueI = utilitySpace.getDomain().getIssues().get(i);
             ArrayBlockingQueue<Double> issueIValues = bidsList.get(i);
             Double[] issueIArray = issueIValues.toArray(new Double[issueIValues.size()]);
+            IssueDiscrete thisIssueDiscrete = (IssueDiscrete) myLastBid.getIssues().get(i);
 
-            double Yi = ((EvaluatorDiscrete)additiveUtilitySpace.getEvaluator(i)).getValue((ValueDiscrete) pOppntBid.getValue(i));
-            double Xi = ((EvaluatorDiscrete)additiveUtilitySpace.getEvaluator(i)).getValue((ValueDiscrete) myLastBid.getValue(i));
+            evaluator_i = additiveUtilitySpace.getEvaluator(issueI.getNumber());
+
+            double Yi = ((EvaluatorDiscrete) evaluator_i).getValue((ValueDiscrete) pOppntBid.getValue(i));
+            double Xi = ((EvaluatorDiscrete) evaluator_i).getValue((ValueDiscrete) myLastBid.getValue(i));
 //            double Yi = additiveUtilitySpace.getEvaluation(issueI.getNumber(), pOppntBid);
 //            double Xi = additiveUtilitySpace.getEvaluation(issueI.getNumber(), myLastBid);
-            evaluator = additiveUtilitySpace.getEvaluator(i);
-            IssueDiscrete thisIssueDiscrete = (IssueDiscrete) myLastBid.getIssues().get(i);
-            Ei = Yi - Xi;
+
+            double utility_Yi = Yi * evaluator_i.getWeight();
+            double utility_Xi = Xi * evaluator_i.getWeight();
+
+            Ei = utility_Yi - utility_Xi;
             if(Ei > 0) {
                 //opponent's recommendation is more preferred by the both. hence use it.
                 newValues.put(thisIssueDiscrete.getNumber(), pOppntBid.getValue(thisIssueDiscrete.getNumber()));
             }
             if (Ei < 0) {
-                // I have suggested a value more preferred to me, not by the opponent. Hence use opponent's suggestion,
+                // Opponent has suggested a value that is less preferred by me. Use opponent's suggestion,
                 // but keep the utility im losing to balance it out by increasing on another issue.
 
-                utilityExcess += /*evaluator.getWeight()**/(Xi - Yi);
                 newValues.put(thisIssueDiscrete.getNumber(), pOppntBid.getValue(thisIssueDiscrete.getNumber()));
-                double delta_x = Xi - Yi;
+                utilityExcess += Math.abs(Ei);
+
+                double key_old = valuesMap.get(issueI.getNumber()).get(myLastBid.getValue(issueI.getNumber()));
+                double key_new = valuesMap.get(issueI.getNumber()).get(pOppntBid.getValue(issueI.getNumber()));
+
+                double key_diff = key_new - key_old;
+
                 for (int j = 0; j < nOfIssues; j++) {
                     if (j != i) {
                         Issue issueJ = utilitySpace.getDomain().getIssues().get(j);
+                        evaluator_j = additiveUtilitySpace.getEvaluator(issueJ.getNumber());
+                        double key_j = valuesMap.get(issueI.getNumber()).get(pOppntBid.getValue(issueJ.getNumber()));
                         ArrayBlockingQueue<Double> issueJValues = bidsList.get(j);
                         Double[] issueJArray = issueJValues.toArray(new Double[issueJValues.size()]);
                         double r = getCorrelationXZ(issueIArray, issueJArray);
+
+                        if (issueJ.getType() == ISSUETYPE.DISCRETE) {
+                            double asipration_j = ((EvaluatorDiscrete) evaluator_j).getValue((ValueDiscrete) myLastBid.getValue(issueJ.getNumber()));
+                            asipration_j += r * key_diff;
+
+                            //get value from aspiration
+
+                        }
+
+
+
+
                         System.out.println(r);
                     }
                 }
@@ -331,6 +356,17 @@ public class CorrelationAgent extends Agent {
             return lBidsRange.get(lIndex);
         }
     }
+
+    public Value getValueFromAspiration(double aspiration, Issue issue, AdditiveUtilitySpace additiveUtilitySpace) {
+        return null;
+    }
+
+
+
+
+
+
+
 
     public double getPartialCorrelationControlledZ(double rxy, double rxz, double ryz) {
         double rxy_z = 0;
